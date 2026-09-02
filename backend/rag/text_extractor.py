@@ -5,7 +5,7 @@ Returns a list of dictionaries with 'text' and 'page_number' for each page/secti
 
 from __future__ import annotations
 
-import fitz  # PyMuPDF
+import pymupdf as fitz  # PyMuPDF
 from docx import Document as DocxDocument
 
 

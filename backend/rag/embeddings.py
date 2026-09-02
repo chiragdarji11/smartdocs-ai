@@ -5,21 +5,26 @@ Uses the all-MiniLM-L6-v2 model for fast, lightweight embeddings.
 
 from __future__ import annotations
 
-from functools import lru_cache
-from sentence_transformers import SentenceTransformer
-from config import EMBEDDING_MODEL
-
-# Load the embedding model once at module level (singleton pattern)
-# This avoids reloading the model on every request
+# Load the embedding model lazily on first use (not at server startup)
+# This keeps boot memory under 50MB and prevents Render 512MB OOM crash
 _model = None
 
 
-def get_model() -> SentenceTransformer:
-    """Get or initialize the Sentence Transformer model (lazy loading)."""
+def get_model():
+    """Get or initialize the Sentence Transformer model (lazy loading on CPU)."""
     global _model
     if _model is None:
-        print(f"Loading embedding model: {EMBEDDING_MODEL}...")
-        _model = SentenceTransformer(EMBEDDING_MODEL)
+        import os
+        os.environ["TOKENIZERS_PARALLELISM"] = "false"
+        try:
+            import torch
+            torch.set_num_threads(1)
+        except Exception:
+            pass
+
+        print(f"Loading lightweight embedding model: {EMBEDDING_MODEL} on CPU...")
+        from sentence_transformers import SentenceTransformer
+        _model = SentenceTransformer(EMBEDDING_MODEL, device="cpu")
         print("Embedding model loaded successfully!")
     return _model
 
