@@ -1,61 +1,53 @@
 """
-Embedding generation using Sentence Transformers.
-Uses the all-MiniLM-L6-v2 model for fast, lightweight embeddings.
+Embedding generation using lightweight ONNX fastembed (or Sentence Transformers fallback).
+Super lightweight (<30MB RAM) for cloud deployment on Render free tier.
 """
 
 from __future__ import annotations
+from functools import lru_cache
+from config import EMBEDDING_MODEL
 
-# Load the embedding model lazily on first use (not at server startup)
-# This keeps boot memory under 50MB and prevents Render 512MB OOM crash
 _model = None
+_model_type = None
 
 
 def get_model():
-    """Get or initialize the Sentence Transformer model (lazy loading on CPU)."""
-    global _model
+    """Get or initialize embedding model (fastembed ONNX or sentence-transformers)."""
+    global _model, _model_type
     if _model is None:
-        import os
-        os.environ["TOKENIZERS_PARALLELISM"] = "false"
         try:
-            import torch
-            torch.set_num_threads(1)
-        except Exception:
-            pass
-
-        print(f"Loading lightweight embedding model: {EMBEDDING_MODEL} on CPU...")
-        from sentence_transformers import SentenceTransformer
-        _model = SentenceTransformer(EMBEDDING_MODEL, device="cpu")
-        print("Embedding model loaded successfully!")
+            from fastembed import TextEmbedding
+            print("Loading ultra-lightweight FastEmbed (ONNX) model...")
+            _model = TextEmbedding("BAAI/bge-small-en-v1.5")
+            _model_type = "fastembed"
+            print("FastEmbed loaded successfully (<30MB RAM)!")
+        except Exception as e:
+            print(f"FastEmbed not available ({e}), falling back to SentenceTransformer...")
+            import os
+            os.environ["TOKENIZERS_PARALLELISM"] = "false"
+            from sentence_transformers import SentenceTransformer
+            _model = SentenceTransformer(EMBEDDING_MODEL, device="cpu")
+            _model_type = "st"
+            print("SentenceTransformer loaded on CPU!")
     return _model
 
 
 def generate_embeddings(texts: list[str]) -> list[list[float]]:
-    """
-    Generate embeddings for a list of text strings.
-
-    Args:
-        texts: List of text strings to embed
-
-    Returns:
-        List of embedding vectors (each is a list of floats)
-    """
+    """Generate embeddings for a list of text strings."""
     model = get_model()
-    embeddings = model.encode(texts, show_progress_bar=False)
-    return embeddings.tolist()
+    if _model_type == "fastembed":
+        return [list(e) for e in model.embed(texts)]
+    else:
+        embeddings = model.encode(texts, show_progress_bar=False)
+        return embeddings.tolist()
 
 
 @lru_cache(maxsize=1024)
 def generate_single_embedding(text: str) -> list[float]:
-    """
-    Generate an embedding for a single text string.
-    Used for query embedding during chat.
-
-    Args:
-        text: Single text string to embed
-
-    Returns:
-        Embedding vector as a list of floats
-    """
+    """Generate an embedding for a single query text."""
     model = get_model()
-    embedding = model.encode(text, show_progress_bar=False)
-    return embedding.tolist()
+    if _model_type == "fastembed":
+        return list(next(model.embed([text])))
+    else:
+        embedding = model.encode(text, show_progress_bar=False)
+        return embedding.tolist()

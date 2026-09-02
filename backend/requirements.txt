@@ -1,10 +1,8 @@
 # Backend Dependencies
 fastapi
 uvicorn
-langchain
-langchain-community
 chromadb
-sentence-transformers
+fastembed
 pymupdf
 python-docx
 python-multipart
