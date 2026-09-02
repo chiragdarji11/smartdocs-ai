@@ -1,0 +1,19 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+venv/
+env/
+.env
+
+# Node / React
+node_modules/
+dist/
+*.local
+
+# Database & runtime
+backend/uploads/*
+!backend/uploads/.gitkeep
+backend/vector_db/*
+!backend/vector_db/.gitkeep
+database/fraud_rag.db
+*.log
