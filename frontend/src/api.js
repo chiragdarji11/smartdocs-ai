@@ -6,7 +6,8 @@
 import axios from 'axios'
 
 const API_HOST = typeof window !== 'undefined' ? window.location.hostname : 'localhost'
-const BASE_URL = import.meta.env.VITE_API_URL || `http://${API_HOST}:8001`
+const RAW_URL = import.meta.env.VITE_API_URL || `http://${API_HOST}:8001`
+const BASE_URL = RAW_URL.replace(/\/+$/, '')
 
 // Create axios instance pointing to the FastAPI backend
 const api = axios.create({
