@@ -1,0 +1,16 @@
+# Backend Dependencies
+fastapi
+uvicorn
+langchain
+langchain-community
+chromadb
+sentence-transformers
+pymupdf
+python-docx
+python-multipart
+passlib[bcrypt]
+python-jose[cryptography]
+sqlalchemy
+pydantic
+ollama
+groq
