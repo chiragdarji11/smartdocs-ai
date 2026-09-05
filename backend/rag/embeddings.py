@@ -36,7 +36,8 @@ def generate_embeddings(texts: list[str]) -> list[list[float]]:
     """Generate embeddings for a list of text strings."""
     model = get_model()
     if _model_type == "fastembed":
-        return [list(e) for e in model.embed(texts)]
+        # Ensure native Python float conversion via .tolist() for ChromaDB compatibility
+        return [e.tolist() if hasattr(e, "tolist") else [float(x) for x in e] for e in model.embed(texts)]
     else:
         embeddings = model.encode(texts, show_progress_bar=False)
         return embeddings.tolist()
@@ -47,7 +48,8 @@ def generate_single_embedding(text: str) -> list[float]:
     """Generate an embedding for a single query text."""
     model = get_model()
     if _model_type == "fastembed":
-        return list(next(model.embed([text])))
+        raw = next(model.embed([text]))
+        return raw.tolist() if hasattr(raw, "tolist") else [float(x) for x in raw]
     else:
         embedding = model.encode(text, show_progress_bar=False)
         return embedding.tolist()

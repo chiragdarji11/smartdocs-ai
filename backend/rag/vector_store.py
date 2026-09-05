@@ -52,8 +52,8 @@ def add_document_chunks(
     documents = [chunk["text"] for chunk in chunks]
     metadatas = [chunk["metadata"] for chunk in chunks]
 
-    # Add to collection in batches (ChromaDB handles large batches well)
-    collection.add(
+    # Add/update in collection using upsert to avoid duplicate ID errors
+    collection.upsert(
         ids=ids,
         documents=documents,
         embeddings=embeddings,

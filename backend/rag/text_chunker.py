@@ -58,6 +58,11 @@ def chunk_text(pages: list[dict], document_name: str) -> list[dict]:
     chunks = []
     chunk_counter = 0
 
+    import re
+    import uuid
+    safe_doc_name = re.sub(r'[^a-zA-Z0-9_-]', '_', document_name)[:30]
+    unique_prefix = uuid.uuid4().hex[:8]
+
     for page in pages:
         page_chunks = _split_text_recursive(page["text"], CHUNK_SIZE, CHUNK_OVERLAP)
 
@@ -70,7 +75,7 @@ def chunk_text(pages: list[dict], document_name: str) -> list[dict]:
                 "metadata": {
                     "document_name": document_name,
                     "page_number": page["page_number"],
-                    "chunk_id": f"{document_name}_chunk_{chunk_counter}"
+                    "chunk_id": f"{safe_doc_name}_{unique_prefix}_{chunk_counter}"
                 }
             })
 

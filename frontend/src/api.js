@@ -13,9 +13,6 @@ const BASE_URL = RAW_URL.replace(/\/+$/, '')
 // Create axios instance pointing to the FastAPI backend
 const api = axios.create({
   baseURL: BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
 })
 
 // Request interceptor: attach JWT token to every request
@@ -25,10 +22,14 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
-    // If request payload is FormData (file upload), delete default JSON header
-    // so the browser automatically sets 'multipart/form-data' with boundary
+    // If request payload is FormData (file upload), ensure browser sets multipart boundary
     if (config.data instanceof FormData) {
-      delete config.headers['Content-Type']
+      if (config.headers) {
+        if (typeof config.headers.delete === 'function') {
+          config.headers.delete('Content-Type')
+        }
+        delete config.headers['Content-Type']
+      }
     }
     return config
   },
