@@ -295,21 +295,23 @@ def generate_llm_response(prompt: str) -> str:
     Supports Groq Cloud in production and local Ollama for offline use.
     """
     if _groq_client:
-        try:
-            chat_completion = _groq_client.chat.completions.create(
-                messages=[{"role": "user", "content": prompt}],
-                model=GROQ_MODEL,
-                temperature=0.3,
-                max_tokens=1024,
-            )
-            return chat_completion.choices[0].message.content.strip()
-        except Exception as e:
-            print(f"Groq response error: {e}")
+        for model_name in [GROQ_MODEL, "llama-3.1-8b-instant", "llama-3.3-70b-versatile"]:
+            try:
+                chat_completion = _groq_client.chat.completions.create(
+                    messages=[{"role": "user", "content": prompt}],
+                    model=model_name,
+                    temperature=0.3,
+                    max_tokens=1024,
+                )
+                return chat_completion.choices[0].message.content.strip()
+            except Exception as e:
+                print(f"Groq ({model_name}) response error: {e}")
 
     if not is_ollama_available():
         return (
-            "### AI Intelligence Result (Local Mode)\n\n"
-            "*(Note: AI service is currently offline. Start Ollama (`ollama run llama3.2`) or provide GROQ_API_KEY for full AI reasoning.)*\n\n"
+            "### AI Intelligence Result (Cloud Notice)\n\n"
+            "*(Note: 24/7 Cloud AI requires `GROQ_API_KEY` configured in Render Environment Variables. "
+            "For offline desktop use, start Ollama with `ollama run llama3.2`.)*\n\n"
             f"{prompt[:1800]}\n..."
         )
 
@@ -325,7 +327,7 @@ def generate_llm_response(prompt: str) -> str:
     except Exception as e:
         print(f"Ollama connection notice in generate_llm_response: {e}")
         return (
-            "### AI Intelligence Result (Local Mode)\n\n"
+            "### AI Intelligence Result\n\n"
             f"{prompt[:1800]}\n..."
         )
 
@@ -336,6 +338,20 @@ def generate_answer(question: str, chunks: list[dict], history: list[dict] = Non
     instant = _get_instant_greeting(question)
     if instant:
         return instant
+
+    if _groq_client:
+        messages = _build_messages(question, chunks, history, intent)
+        for model_name in [GROQ_MODEL, "llama-3.1-8b-instant", "llama-3.3-70b-versatile"]:
+            try:
+                chat_completion = _groq_client.chat.completions.create(
+                    messages=messages,
+                    model=model_name,
+                    temperature=0.3 if (chunks and len(chunks) > 0) else 0.6,
+                    max_tokens=1024,
+                )
+                return _sanitize(chat_completion.choices[0].message.content.strip())
+            except Exception as e:
+                print(f"Groq ({model_name}) completion notice: {e}")
 
     opts = _get_ollama_options(chunks, intent)
     try:
@@ -354,13 +370,13 @@ def generate_answer(question: str, chunks: list[dict], history: list[dict] = Non
         elif _is_simple_greeting(question):
             return "Hello! How can I assist you with your documents and questions today?"
         else:
-            return f"Ollama model is currently connecting or offline. Please ensure Ollama is running (`ollama serve`) with model `{OLLAMA_MODEL}`."
+            return f"AI Service Notice: For 24/7 cloud chat on Render, please add `GROQ_API_KEY` in Render Settings. For local computer chat, start Ollama (`ollama serve`)."
 
 
 def generate_answer_stream(
     question: str, chunks: list[dict], history: list[dict] = None, intent: str = None
 ) -> Generator[str, None, None]:
-    """Yield sanitised answer tokens from Ollama's streaming API, with robust offline fallback.
+    """Yield sanitised answer tokens from Groq or Ollama's streaming API, with robust offline fallback.
     Fast-paths greetings for instant 0ms response and checks Ollama availability in <10ms."""
     # Fast-path 1: instant greeting response without calling LLM at all
     instant = _get_instant_greeting(question)
@@ -370,22 +386,23 @@ def generate_answer_stream(
 
     # Groq Cloud streaming if API key is provided (Production Cloud Mode)
     if _groq_client:
-        try:
-            messages = _build_messages(question, chunks, history, intent)
-            stream = _groq_client.chat.completions.create(
-                messages=messages,
-                model=GROQ_MODEL,
-                temperature=0.3 if (chunks and len(chunks) > 0) else 0.6,
-                max_tokens=1024,
-                stream=True,
-            )
-            for chunk in stream:
-                content = chunk.choices[0].delta.content or ""
-                if content:
-                    yield content
-            return
-        except Exception as e:
-            print(f"Groq streaming notice: {e}")
+        messages = _build_messages(question, chunks, history, intent)
+        for model_name in [GROQ_MODEL, "llama-3.1-8b-instant", "llama-3.3-70b-versatile"]:
+            try:
+                stream = _groq_client.chat.completions.create(
+                    messages=messages,
+                    model=model_name,
+                    temperature=0.3 if (chunks and len(chunks) > 0) else 0.6,
+                    max_tokens=1024,
+                    stream=True,
+                )
+                for chunk in stream:
+                    content = chunk.choices[0].delta.content or ""
+                    if content:
+                        yield content
+                return
+            except Exception as e:
+                print(f"Groq ({model_name}) streaming notice: {e}")
 
     # Local Ollama check
     if not is_ollama_available():
@@ -395,7 +412,7 @@ def generate_answer_stream(
         elif _is_simple_greeting(question) or any(kw in question.lower() for kw in ['kam', 'kaam', 'kya kar', 'what can you do', 'help', 'kya hai']):
             yield "Main aapki documents aur general analysis mein madad kar sakta hoon:\n\n• **Document Q&A & Search**: Uploaded documents ke baare mein sawal poochein\n• **AI Document Intelligence**: Executive summaries, comparison, aur study notes create karein\n• **Analytical Insights**: Complex documents ka detailed breakdown aur structured explanations paayein"
         else:
-            yield f"Ollama service is currently offline. Please start Ollama (`ollama run {OLLAMA_MODEL}` or open the Ollama app)."
+            yield "### ℹ️ AI Service Notice (Cloud Mode)\n\nRender cloud server par 24/7 AI Chat enable karne ke liye ek free **`GROQ_API_KEY`** Render ke Environment Variables me add karni hoti hai.\n\n* **Render me**: Dashboard -> Environment Variables -> `GROQ_API_KEY` add karein.\n* **Local computer par**: Terminal me `ollama run llama3.2` start karein."
         return
 
     opts = _get_ollama_options(chunks, intent)

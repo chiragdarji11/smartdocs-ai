@@ -35,7 +35,7 @@ TOP_K_RESULTS = 3         # Number of chunks to retrieve
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"  # Sentence Transformer model
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")   # Llama 3.2 (Fast & intelligent document assistant)
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", None)         # Groq Cloud API Key for 24/7 cloud deployment
-GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.2-3b-preview")  # Fast Groq cloud model
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")  # Fast active Groq cloud model
 
 # Speed-tuned token limits per query type
 OLLAMA_FAST_PREDICT = 128     # Greetings / tiny replies (instant feel)
