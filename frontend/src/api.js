@@ -5,8 +5,9 @@
 
 import axios from 'axios'
 
-const API_HOST = typeof window !== 'undefined' ? window.location.hostname : 'localhost'
-const RAW_URL = import.meta.env.VITE_API_URL || `http://${API_HOST}:8001`
+const IS_LOCAL = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+const DEFAULT_URL = IS_LOCAL ? 'http://localhost:8001' : 'https://smartdocs-ai-e544.onrender.com'
+const RAW_URL = import.meta.env.VITE_API_URL || DEFAULT_URL
 const BASE_URL = RAW_URL.replace(/\/+$/, '')
 
 // Create axios instance pointing to the FastAPI backend
